@@ -1,19 +1,38 @@
-import { Application, Assets, Sprite } from "pixi.js";
+import { Application, Assets, Sprite, Rectangle, Container, Text, TextStyle } from "pixi.js";
 
 (async () => {
-  // Create a new application
+  // Инициализация PixiJS
   const app = new Application();
-
-  // Initialize the application
   await app.init({
     width: 640,
     height: 480,
-    backgroundColor: 0x111111, // Цвет внутри самого канваса
-    resolution: window.devicePixelRatio || 1, // Поддержка Retina-экранов
-    autoDensity: true, // Корректное отображение стилей при разном DPI
+    backgroundColor: 0x050505,
+    resolution: window.devicePixelRatio || 1,
+    autoDensity: true,
+  });
+  document.getElementById("pixi-container").appendChild(app.canvas);
+
+  // Загрузка спрайтов
+  const arkanoid_texture = await Assets.load("/assets/arkanoid.png");
+  const ball_texture = await Assets.load("/assets/ball.png");
+  const brick_texture = await Assets.load("/assets/block.png");
+
+  // Общие стили для текста
+  const textStyle = new TextStyle({
+    fontFamily: "Pixelify Sans",
+    fontSize: 24,
+    fill: 0x58f707,
+    align: "center",
+    letterSpacing: 3
   });
 
-  // --- Игровые параметры
+  // Глобальные ссылки на экраны
+  let mainMenuScene;
+  let gameScene;
+  let gameOverScene;
+  let currentScene = null;
+
+  // переменные для механик
   const bricks = [];
   const rows = 4;
   const cols = 8;
@@ -21,120 +40,122 @@ import { Application, Assets, Sprite } from "pixi.js";
   const brickHeight = 20;
   const brickPadding = 10;
   const offsetTop = 60;
-
-  // Рассчитываем отступ слева, чтобы сетка кирпичей была по центру экрана
   const totalGridWidth = cols * brickWidth + (cols - 1) * brickPadding;
   const offsetLeft = (app.screen.width - totalGridWidth) / 2;
 
-  // Append the application canvas to the document body
-  document.getElementById("pixi-container").appendChild(app.canvas);
-
-  // Создание игрока-арканоида
-  const arkanoid_texture = await Assets.load("/assets/arkanoid.png");
-
-  const arkanoid = new Sprite(arkanoid_texture);
-
-  arkanoid.anchor.set(0.5);
-  arkanoid.scale.set(0.7);
-
-  // arkanoid.position.set(app.screen.width / 2, app.screen.height / 2);
-  arkanoid.position.set(app.screen.width / 2, 400);
-
-  app.stage.addChild(arkanoid);
-
-  // Создание мяча
-  const ball_texture = await Assets.load("/assets/ball.png");
-  const ball = new Sprite(ball_texture);
-  ball.anchor.set(0.5);
-  ball.width = 15;
-  ball.height = 15;
-
-  // Скорость мяча по осям X и Y
+  let arkanoid, ball;
   let ballDx = 4;
   let ballDy = -4;
-
-  // Флаг для мяча, запущен ли мяч в движение
   let isBallLaunched = false;
+  const keys = { ArrowLeft: false, ArrowRight: false };
+  const paddleSpeed = 6;
 
-  app.stage.addChild(ball);
+  // ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ СЦЕН 
+  function switchScene(newScene) {
+    // Скрываем текущую сцену, если она есть
+    if (currentScene) {
+      currentScene.visible = false;
+    }
+    // Показываем новую сцену
+    currentScene = newScene;
+    currentScene.visible = true;
+  }
 
-  // Создание сеток из кирпичей
-  const brick_texture = await Assets.load("/assets/block.png");
+  // ЭКРАН ГЛАВНОГО МЕНЮ
+  function createMainMenu() {
+    mainMenuScene = new Container();
+    mainMenuScene.visible = false;
+    app.stage.addChild(mainMenuScene);
 
+    const startText = new Text({ text: "PRESS  ENTER", style: textStyle });
+    startText.anchor.set(0.5);
+    startText.position.set(app.screen.width / 2, app.screen.height / 2);
+    mainMenuScene.addChild(startText);
+
+    // Интерактивность для клика по экрану меню
+    mainMenuScene.eventMode = "static";
+    mainMenuScene.hitArea = new Rectangle(0, 0, app.screen.width, app.screen.height);
+    mainMenuScene.on("pointerdown", () => {
+      startNewGame(); // При клике запускаем игру
+    });
+  }
+
+  // ИГРОВОЙ ЭКРАН
+  function createGameScene() {
+    gameScene = new Container();
+    gameScene.visible = false;
+    app.stage.addChild(gameScene);
+
+    // Создаем платформу внутри игрового контейнера
+    arkanoid = new Sprite(arkanoid_texture);
+    arkanoid.anchor.set(0.5);
+    arkanoid.scale.set(0.7);
+    arkanoid.position.set(app.screen.width / 2, 400);
+    gameScene.addChild(arkanoid);
+
+    // Создаем мяч внутри игрового контейнера
+    ball = new Sprite(ball_texture);
+    ball.anchor.set(0.5);
+    ball.width = 15;
+    ball.height = 15;
+    gameScene.addChild(ball);
+
+    // Однократная подписка на управление клавиатурой
+    window.addEventListener("keydown", (e) => {
+      if (currentScene !== gameScene) return; // Игнорируем кнопки, если мы не в игре
+      if (e.key in keys) {
+        keys[e.key] = true;
+        e.preventDefault();
+        if (!isBallLaunched) isBallLaunched = true;
+      }
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.key in keys) keys[e.key] = false;
+    });
+  }
+
+  // Вспомогательные функции для игровой механики
   function createBricks() {
+    for (let i = 0; i < bricks.length; i++) gameScene.removeChild(bricks[i]);
+    bricks.length = 0;
+
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const brick = new Sprite(brick_texture);
         brick.width = brickWidth;
         brick.height = brickHeight;
-
-        // Размещаем кирпичи по сетке
         brick.x = offsetLeft + c * (brickWidth + brickPadding);
         brick.y = offsetTop + r * (brickHeight + brickPadding);
-
-        // Окрашиваем ряды кирпичей в разные цвета с помощью tint
         const colors = [0x274e13, 0x257804, 0x27c009, 0x58f707];
         brick.tint = colors[r % colors.length];
 
-        app.stage.addChild(brick);
+        gameScene.addChild(brick); // Важно: добавляем именно в gameScene!
         bricks.push(brick);
       }
     }
   }
 
-  function resetGame() {
-    // Возвращаем платформу в центр экрана
-    arkanoid.x = app.screen.width / 2;
-
-    // Сбрасываем флаг запуска
-    isBallLaunched = false;
-
-    // Пересчитываем начальные скорости, но пока не применяем движение
-    ballDx = Math.random() > 0.5 ? 4 : -4;
-    ballDy = -5;
-
-    // Фиксируем мяч ровно над платформой
-    updateBallAttachedPosition();
-  }
-
-  // Обновление позиции мяча, пока он привязан к платформе
   function updateBallAttachedPosition() {
     ball.x = arkanoid.x;
-    // Сдвигаем мяч вверх на половину высоты платформы + половину высоты мяча
     ball.y = arkanoid.y - arkanoid.height / 2 - ball.height / 2;
   }
 
-  // Сразу создаем кирпичи и ставим мяч на исходную
-  createBricks();
-  resetGame();
+  function startNewGame() {
+    arkanoid.x = app.screen.width / 2;
+    isBallLaunched = false;
+    ballDx = Math.random() > 0.5 ? 4 : -4;
+    ballDy = -5;
+    
+    createBricks();
+    updateBallAttachedPosition();
+    
+    switchScene(gameScene); // Переключаемся на игровой экран
+  }
 
-  // --- Управление клавиатурой
-  const keys = { ArrowLeft: false, ArrowRight: false };
-  const paddleSpeed = 6; // Скорость перемещения платформы
-
-  window.addEventListener("keydown", (e) => {
-    if (e.key in keys) {
-      keys[e.key] = true;
-      e.preventDefault(); // Запрещаем прокрутку страницы стрелками
-
-      // Если нажата любая стрелка влево/вправо и игра еще не запущена — запускаем!
-      if (!isBallLaunched) {
-        isBallLaunched = true;
-      }
-    }
-  });
-
-  window.addEventListener("keyup", (e) => {
-    if (e.key in keys) {
-      keys[e.key] = false;
-    }
-  });
-
-  // --- Функция проверки столкновений
   function checkCollision(obj1, obj2) {
     const bounds1 = obj1.getBounds();
     const bounds2 = obj2.getBounds();
-
     return (
       bounds1.x < bounds2.x + bounds2.width &&
       bounds1.x + bounds1.width > bounds2.x &&
@@ -143,58 +164,72 @@ import { Application, Assets, Sprite } from "pixi.js";
     );
   }
 
-  // --- Игровой цикл
+  // ЭКРАН GAME OVER
+  function createGameOverScene() {
+    gameOverScene = new Container();
+    gameOverScene.visible = false;
+    app.stage.addChild(gameOverScene);
+
+    const gameOverText = new Text({ text: "GAME  OVER", style: { ...textStyle, fontSize: 36, fill: 0xde3249 } });
+    gameOverText.anchor.set(0.5);
+    gameOverText.position.set(app.screen.width / 2, app.screen.height / 2);
+    gameOverScene.addChild(gameOverText);
+
+    gameOverScene.eventMode = "static";
+    gameOverScene.hitArea = new Rectangle(0, 0, app.screen.width, app.screen.height);
+    gameOverScene.on("pointerdown", () => {
+      switchScene(mainMenuScene);
+    });
+  }
+
+  // ИНИЦИАЛИЗАЦИЯ И СТАРТ
+  createMainMenu();
+  createGameScene();
+  createGameOverScene();
+
+  // При запуске приложения показываем главное меню
+  switchScene(mainMenuScene);
+
+  // ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ
   app.ticker.add((time) => {
-    // Движение платформы кнопками с учетом deltaTime
+    // Если сейчас активен не игровой экран — физику игры не обсчитываем!
+    if (currentScene !== gameScene) return;
+
+    // Движение платформы
     const paddleHalfWidth = arkanoid.width / 2;
     if (keys.ArrowLeft) {
       arkanoid.x -= paddleSpeed * time.deltaTime;
-      // Ограничение левой границы
       if (arkanoid.x < paddleHalfWidth) arkanoid.x = paddleHalfWidth;
     }
     if (keys.ArrowRight) {
       arkanoid.x += paddleSpeed * time.deltaTime;
-      // Ограничение правой границы
       if (arkanoid.x > app.screen.width - paddleHalfWidth) arkanoid.x = app.screen.width - paddleHalfWidth;
     }
 
-    // Логика мяча (запущен или удерживается)
+    // Логика мяча
     if (!isBallLaunched) {
-      // Если мяч еще не запущен, он послушно двигается вместе с платформой
       updateBallAttachedPosition();
     } else {
-      // Если игра активна — запускаем физику движения мяча
       ball.x += ballDx * time.deltaTime;
       ball.y += ballDy * time.deltaTime;
 
       const ballRadius = ball.width / 2;
 
-      // Отскок от боковых стен
-      if (ball.x - ballRadius < 0) {
-        ball.x = ballRadius;
-        ballDx = -ballDx;
-      } else if (ball.x + ballRadius > app.screen.width) {
-        ball.x = app.screen.width - ballRadius;
-        ballDx = -ballDx;
-      }
+      // Отскок от стен
+      if (ball.x - ballRadius < 0) { ball.x = ballRadius; ballDx = -ballDx; }
+      else if (ball.x + ballRadius > app.screen.width) { ball.x = app.screen.width - ballRadius; ballDx = -ballDx; }
 
-      // Отскок от верхней стены
-      if (ball.y - ballRadius < 0) {
-        ball.y = ballRadius;
-        ballDy = -ballDy;
-      }
+      if (ball.y - ballRadius < 0) { ball.y = ballRadius; ballDy = -ballDy; }
 
-      // Проигрыш при падении вниз
+      // ТРИГГЕР ПРОИГРЫША: Переключение на экран Game Over
       if (ball.y - ballRadius > app.screen.height) {
-        alert("Игра окончена!");
-        resetGame();
+        switchScene(gameOverScene); // Вместо alert() просто включаем нужную сцену
+        return;
       }
 
-      // Столкновение мяча с платформой игрока
+      // Отскок от платформы
       if (checkCollision(ball, arkanoid)) {
-        ballDy = -Math.abs(ballDy); // Отбиваем строго вверх
-
-        // Корректируем угол отскока в зависимости от точки удара о платформу
+        ballDy = -Math.abs(ballDy);
         const hitPoint = ball.x - arkanoid.x;
         ballDx = hitPoint * 0.15;
       }
@@ -204,18 +239,16 @@ import { Application, Assets, Sprite } from "pixi.js";
         const brick = bricks[i];
         if (checkCollision(ball, brick)) {
           ballDy = -ballDy;
-
-          app.stage.removeChild(brick);
+          gameScene.removeChild(brick);
           bricks.splice(i, 1);
           break;
         }
       }
 
-      // Условие победы
+      // Условие победы (можно сделать отдельный экран победы по аналогии)
       if (bricks.length === 0) {
-        alert("Вы победили!");
+        // Генерируем новую сетку кирпичей
         createBricks();
-        resetGame();
       }
     }
   });
