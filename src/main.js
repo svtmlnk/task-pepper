@@ -13,7 +13,7 @@ import { Application, Assets, Sprite } from "pixi.js";
     autoDensity: true, // Корректное отображение стилей при разном DPI
   });
 
-  // --- Игровые параметры ---
+  // --- Игровые параметры
   const bricks = [];
   const rows = 4;
   const cols = 8;
@@ -53,6 +53,9 @@ import { Application, Assets, Sprite } from "pixi.js";
   let ballDx = 4;
   let ballDy = -4;
 
+  // Флаг для мяча, запущен ли мяч в движение
+  let isBallLaunched = false;
+
   app.stage.addChild(ball);
 
   // Создание сеток из кирпичей
@@ -80,16 +83,32 @@ import { Application, Assets, Sprite } from "pixi.js";
   }
 
   function resetGame() {
-    ball.position.set(app.screen.width / 2, app.screen.height - 100);
-    ballDx = Math.random() > 0.5 ? 4 : -4; // Случайное направление при старте
+    // Возвращаем платформу в центр экрана
+    arkanoid.x = app.screen.width / 2;
+
+    // Сбрасываем флаг запуска
+    isBallLaunched = false;
+
+    // Пересчитываем начальные скорости, но пока не применяем движение
+    ballDx = Math.random() > 0.5 ? 4 : -4;
     ballDy = -5;
+
+    // Фиксируем мяч ровно над платформой
+    updateBallAttachedPosition();
+  }
+
+  // Обновление позиции мяча, пока он привязан к платформе
+  function updateBallAttachedPosition() {
+    ball.x = arkanoid.x;
+    // Сдвигаем мяч вверх на половину высоты платформы + половину высоты мяча
+    ball.y = arkanoid.y - arkanoid.height / 2 - ball.height / 2;
   }
 
   // Сразу создаем кирпичи и ставим мяч на исходную
   createBricks();
   resetGame();
 
-  // --- Управление клавиатурой ---
+  // --- Управление клавиатурой
   const keys = { ArrowLeft: false, ArrowRight: false };
   const paddleSpeed = 6; // Скорость перемещения платформы
 
@@ -97,6 +116,11 @@ import { Application, Assets, Sprite } from "pixi.js";
     if (e.key in keys) {
       keys[e.key] = true;
       e.preventDefault(); // Запрещаем прокрутку страницы стрелками
+
+      // Если нажата любая стрелка влево/вправо и игра еще не запущена — запускаем!
+      if (!isBallLaunched) {
+        isBallLaunched = true;
+      }
     }
   });
 
@@ -106,7 +130,7 @@ import { Application, Assets, Sprite } from "pixi.js";
     }
   });
 
-  // --- Функция проверки столкновений (AABB) ---
+  // --- Функция проверки столкновений
   function checkCollision(obj1, obj2) {
     const bounds1 = obj1.getBounds();
     const bounds2 = obj2.getBounds();
@@ -119,7 +143,7 @@ import { Application, Assets, Sprite } from "pixi.js";
     );
   }
 
-  // --- Игровой цикл ---
+  // --- Игровой цикл
   app.ticker.add((time) => {
     // Движение платформы кнопками с учетом deltaTime
     const paddleHalfWidth = arkanoid.width / 2;
@@ -131,63 +155,68 @@ import { Application, Assets, Sprite } from "pixi.js";
     if (keys.ArrowRight) {
       arkanoid.x += paddleSpeed * time.deltaTime;
       // Ограничение правой границы
-      if (arkanoid.x > app.screen.width - paddleHalfWidth)
-        arkanoid.x = app.screen.width - paddleHalfWidth;
+      if (arkanoid.x > app.screen.width - paddleHalfWidth) arkanoid.x = app.screen.width - paddleHalfWidth;
     }
 
-    // Движение мяча
-    ball.x += ballDx * time.deltaTime;
-    ball.y += ballDy * time.deltaTime;
+    // Логика мяча (запущен или удерживается)
+    if (!isBallLaunched) {
+      // Если мяч еще не запущен, он послушно двигается вместе с платформой
+      updateBallAttachedPosition();
+    } else {
+      // Если игра активна — запускаем физику движения мяча
+      ball.x += ballDx * time.deltaTime;
+      ball.y += ballDy * time.deltaTime;
 
-    const ballRadius = ball.width / 2;
+      const ballRadius = ball.width / 2;
 
-    // Отскок от боковых стен
-    if (ball.x - ballRadius < 0) {
-      ball.x = ballRadius;
-      ballDx = -ballDx;
-    } else if (ball.x + ballRadius > app.screen.width) {
-      ball.x = app.screen.width - ballRadius;
-      ballDx = -ballDx;
-    }
-
-    // Отскок от верхней стены
-    if (ball.y - ballRadius < 0) {
-      ball.y = ballRadius;
-      ballDy = -ballDy;
-    }
-
-    // Проигрыш при падении вниз
-    if (ball.y - ballRadius > app.screen.height) {
-      alert("Игра окончена!");
-      resetGame();
-    }
-
-    // Столкновение мяча с платформой игрока
-    if (checkCollision(ball, arkanoid)) {
-      ballDy = -Math.abs(ballDy); // Отбиваем строго вверх
-
-      // Корректируем угол отскока в зависимости от точки удара о платформу
-      const hitPoint = ball.x - arkanoid.x;
-      ballDx = hitPoint * 0.15;
-    }
-
-    // Столкновение с кирпичами
-    for (let i = bricks.length - 1; i >= 0; i--) {
-      const brick = bricks[i];
-      if (checkCollision(ball, brick)) {
-        ballDy = -ballDy;
-
-        app.stage.removeChild(brick);
-        bricks.splice(i, 1);
-        break;
+      // Отскок от боковых стен
+      if (ball.x - ballRadius < 0) {
+        ball.x = ballRadius;
+        ballDx = -ballDx;
+      } else if (ball.x + ballRadius > app.screen.width) {
+        ball.x = app.screen.width - ballRadius;
+        ballDx = -ballDx;
       }
-    }
 
-    // Условие победы
-    if (bricks.length === 0) {
-      alert("Вы победили!");
-      createBricks();
-      resetGame();
+      // Отскок от верхней стены
+      if (ball.y - ballRadius < 0) {
+        ball.y = ballRadius;
+        ballDy = -ballDy;
+      }
+
+      // Проигрыш при падении вниз
+      if (ball.y - ballRadius > app.screen.height) {
+        alert("Игра окончена!");
+        resetGame();
+      }
+
+      // Столкновение мяча с платформой игрока
+      if (checkCollision(ball, arkanoid)) {
+        ballDy = -Math.abs(ballDy); // Отбиваем строго вверх
+
+        // Корректируем угол отскока в зависимости от точки удара о платформу
+        const hitPoint = ball.x - arkanoid.x;
+        ballDx = hitPoint * 0.15;
+      }
+
+      // Столкновение с кирпичами
+      for (let i = bricks.length - 1; i >= 0; i--) {
+        const brick = bricks[i];
+        if (checkCollision(ball, brick)) {
+          ballDy = -ballDy;
+
+          app.stage.removeChild(brick);
+          bricks.splice(i, 1);
+          break;
+        }
+      }
+
+      // Условие победы
+      if (bricks.length === 0) {
+        alert("Вы победили!");
+        createBricks();
+        resetGame();
+      }
     }
   });
 })();
