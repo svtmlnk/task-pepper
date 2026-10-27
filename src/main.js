@@ -5,7 +5,13 @@ import { Application, Assets, Sprite } from "pixi.js";
   const app = new Application();
 
   // Initialize the application
-  await app.init({ background: "#1099bb", resizeTo: window });
+  await app.init({
+    width: 640,
+    height: 480,
+    backgroundColor: 0x1099bb, // Цвет внутри самого канваса
+    resolution: window.devicePixelRatio || 1, // Поддержка Retina-экранов
+    autoDensity: true, // Корректное отображение стилей при разном DPI
+  });
 
   // Append the application canvas to the document body
   document.getElementById("pixi-container").appendChild(app.canvas);
