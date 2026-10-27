@@ -8,7 +8,7 @@ import { Application, Assets, Sprite } from "pixi.js";
   await app.init({
     width: 640,
     height: 480,
-    backgroundColor: 0x1099bb, // Цвет внутри самого канваса
+    backgroundColor: 0x111111, // Цвет внутри самого канваса
     resolution: window.devicePixelRatio || 1, // Поддержка Retina-экранов
     autoDensity: true, // Корректное отображение стилей при разном DPI
   });
@@ -16,26 +16,20 @@ import { Application, Assets, Sprite } from "pixi.js";
   // Append the application canvas to the document body
   document.getElementById("pixi-container").appendChild(app.canvas);
 
-  // Load the bunny texture
-  const texture = await Assets.load("/assets/bunny.png");
+  // Load the arkanoid texture
+  const texture = await Assets.load("/assets/arkanoid.png");
 
-  // Create a bunny Sprite
-  const bunny = new Sprite(texture);
+  // Create a arkanoid Sprite
+  const arkanoid = new Sprite(texture);
 
   // Center the sprite's anchor point
-  bunny.anchor.set(0.5);
+  arkanoid.anchor.set(0.5);
+  arkanoid.scale.set(0.5);
 
   // Move the sprite to the center of the screen
-  bunny.position.set(app.screen.width / 2, app.screen.height / 2);
+  // arkanoid.position.set(app.screen.width / 2, app.screen.height / 2);
+  arkanoid.position.set(app.screen.width / 2, 400);
 
-  // Add the bunny to the stage
-  app.stage.addChild(bunny);
-
-  // Listen for animate update
-  app.ticker.add((time) => {
-    // Just for fun, let's rotate mr rabbit a little.
-    // * Delta is 1 if running at 100% performance *
-    // * Creates frame-independent transformation *
-    bunny.rotation += 0.1 * time.deltaTime;
-  });
+  // Add the arkanoid to the stage
+  app.stage.addChild(arkanoid);
 })();
