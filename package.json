@@ -3,13 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/svtmlnk/task-pepper"
+  },
   "scripts": {
     "start": "npm run dev",
     "build": "npm run lint && vite build",
     "lint": "eslint .",
-    "dev": "vite"
+    "dev": "vite",
+    "preview": "vite preview",
+    "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
+    "gh-pages": "^6.3.0",
     "pixi.js": "^8.8.1"
   },
   "devDependencies": {
@@ -17,7 +24,9 @@
     "eslint": "^9.21.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-prettier": "^5.2.6",
+    "globals": "^17.13.0",
     "prettier": "^3.5.3",
+    "terser": "^5.51.2",
     "vite": "^6.2.0"
   }
 }

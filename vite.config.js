@@ -6,4 +6,11 @@ export default defineConfig({
     port: 8080,
     open: true,
   },
+  base: "./",
+  build: {
+    outDir: "dist",
+    assetsDir: "assets",
+    sourcemap: false,
+    minify: "terser",
+  },
 });
