@@ -1,4 +1,15 @@
-Игра: 
+Игра для «Перцы-Студия»
+ТЗ: https://docs.google.com/document/d/1uJGC658KftKVgUCSh-WB1dmv2a3Owvs1CwAsI_GhpDs/edit?tab=t.0
+
+
+Ссылка на игру: ###
+
+Запуск игры:
+git clone https://github.com/svtmlnk/task-pepper
+npm i
+npm run dev
+
+Задача: 
 
 Управление: 
 - [←] [→] - управление игроком и запуск мяча
