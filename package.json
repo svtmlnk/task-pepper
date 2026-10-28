@@ -7,6 +7,7 @@
     "type": "git",
     "url": "https://github.com/svtmlnk/task-pepper"
   },
+  "homepage": "https://hTKzmak.github.io/task-pepper",
   "scripts": {
     "start": "npm run dev",
     "build": "npm run lint && vite build",
