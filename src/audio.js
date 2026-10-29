@@ -19,8 +19,8 @@ export class AudioManager {
     this.current = null;
 
     this.tracks = {
-      main: new Audio("/assets/music/main.mp3"),
-      gameover: new Audio("/assets/music/gameover.mp3"),
+      main: new Audio("assets/music/main.mp3"),
+      gameover: new Audio("assets/music/gameover.mp3"),
     };
     this.tracks.main.loop = true;
     this.tracks.main.volume = 0.4;

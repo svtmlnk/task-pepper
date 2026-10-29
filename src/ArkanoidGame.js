@@ -51,8 +51,8 @@ export class ArkanoidGame {
     this.root.appendChild(this.canvas);
 
     const [paddle, ball] = await Promise.all([
-      Assets.load("/assets/arkanoid.png"),
-      Assets.load("/assets/ball.png"),
+      Assets.load("assets/arkanoid.png"),
+      Assets.load("assets/ball.png"),
       this.loadFont(),
     ]);
     paddle.source.scaleMode = "nearest";
@@ -89,7 +89,7 @@ export class ArkanoidGame {
     try {
       const face = new FontFace(
         FONT_NAME,
-        "url(/assets/fonts/PressStart2P.woff2)",
+        "url(assets/fonts/PressStart2P.woff2)",
       );
       document.fonts.add(await face.load());
     } catch {

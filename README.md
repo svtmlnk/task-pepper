@@ -2,7 +2,7 @@
 ТЗ: https://docs.google.com/document/d/1uJGC658KftKVgUCSh-WB1dmv2a3Owvs1CwAsI_GhpDs/edit?tab=t.0
 
 
-Ссылка на игру: ###
+Ссылка на игру: https://svtmlnk.github.io/task-pepper/
 
 Запуск игры:
 git clone https://github.com/svtmlnk/task-pepper
